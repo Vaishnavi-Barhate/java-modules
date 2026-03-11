@@ -20,7 +20,6 @@ public class AuthController {
 
     private final AuthService authService;
 
-    // Register API
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
 
@@ -29,7 +28,6 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    // Login API
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
 
