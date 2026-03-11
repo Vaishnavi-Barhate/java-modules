@@ -22,7 +22,6 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
-    // Register User
     public AuthResponse register(RegisterRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -47,8 +46,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .build();
     }
-
-    // Login User
+    
     public AuthResponse login(LoginRequest request) {
 
         User user = userRepository.findByEmail(request.getEmail())
