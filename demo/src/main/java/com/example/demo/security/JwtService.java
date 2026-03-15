@@ -9,34 +9,34 @@ import org.springframework.stereotype.Service;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 
 @Service
 public class JwtService {
 
-    private static final String SECRET_KEY = "mysecretkeymysecretkeymysecretkeymysecretkey";
+    private static final String SECRET_KEY =
+            "ZGVtb19qd3Rfc2VjcmV0X2tleV9mb3Jfc3ByaW5nX2Jvb3RfYXBw";
 
-    private Key getSignKey() {
-        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
-    }
+    private static final long JWT_EXPIRATION = 1000 * 60 * 60; // 1 hour
 
     public String generateToken(String email) {
 
         return Jwts.builder()
                 .setSubject(email)
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24)) // 24 hours
-                .signWith(getSignKey(), SignatureAlgorithm.HS256)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + JWT_EXPIRATION))
+                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public String extractEmail(String token) {
+    public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
     public boolean isTokenValid(String token, String email) {
-        final String extractedEmail = extractEmail(token);
-        return extractedEmail.equals(email) && !isTokenExpired(token);
+        final String username = extractUsername(token);
+        return username.equals(email) && !isTokenExpired(token);
     }
 
     private boolean isTokenExpired(String token) {
@@ -49,12 +49,22 @@ public class JwtService {
 
     private <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
 
-        final Claims claims = Jwts.parserBuilder()
-                .setSigningKey(getSignKey())
+        final Claims claims = extractAllClaims(token);
+        return claimsResolver.apply(claims);
+    }
+
+    private Claims extractAllClaims(String token) {
+
+        return Jwts.parserBuilder()
+                .setSigningKey(getSignInKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
+    }
 
-        return claimsResolver.apply(claims);
+    private Key getSignInKey() {
+
+        byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 }

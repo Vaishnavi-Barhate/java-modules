@@ -4,64 +4,67 @@ import com.example.demo.dto.AuthResponse;
 import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.RegisterRequest;
 import com.example.demo.entity.User;
+import com.example.demo.exception.UserAlreadyExistsException;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.security.JwtService;
-
-import lombok.RequiredArgsConstructor;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-
 @Service
-@RequiredArgsConstructor
 public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
+    public AuthService(UserRepository userRepository,
+                       PasswordEncoder passwordEncoder,
+                       JwtService jwtService) {
+
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
+    }
+
     public AuthResponse register(RegisterRequest request) {
 
-        if (userRepository.existsByEmail(request.getEmail())) {
-            return AuthResponse.builder()
-                    .message("Email already exists")
-                    .build();
+        if (userRepository.existsByEmail(request.email())) {
+            throw new UserAlreadyExistsException("Email already exists");
         }
 
-        User user = User.builder()
-                .name(request.getName())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .role("USER")
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
+        User user = new User();
+
+        user.setName(request.name());
+        user.setEmail(request.email());
+        user.setPassword(passwordEncoder.encode(request.password()));
 
         userRepository.save(user);
 
-        return AuthResponse.builder()
-                .message("User registered successfully")
-                .email(user.getEmail())
-                .build();
+        String token = jwtService.generateToken(user.getEmail());
+
+        return new AuthResponse(
+                "User registered successfully",
+                user.getEmail(),
+                token
+        );
     }
-    
+
     public AuthResponse login(LoginRequest request) {
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid password");
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+            throw new RuntimeException("Invalid credentials");
         }
 
         String token = jwtService.generateToken(user.getEmail());
 
-        return AuthResponse.builder()
-                .message("Login successful")
-                .email(user.getEmail())
-                .token(token)
-                .build();
+        return new AuthResponse(
+                "Login successful",
+                user.getEmail(),
+                token
+        );
     }
 }
